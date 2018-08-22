@@ -1,3 +1,5 @@
+import IterativeSolvers: lsqr, lsqr!
+
 function reconstruct_obs!(g::GGLRM, XY::Array{VecOrMat{Float64}}; X = g.X, Y = g.Y)
   yidxs = get_yidxs(g.losses)
   obsex = g.observed_examples
@@ -121,7 +123,7 @@ end
     stepsize = αx/l
 
     axpy!(-stepsize, gx, newX)
-    prox!(g.rx, newX, stepsize)
+    prox_sparse!(g.rx, newX, stepsize)
     reconstruct_obs!(g, newXY, X=newX)#At_mul_B!(newXY, newX, g.Y)
     newobj = sparse_loss_objective(g, newXY) + evaluate(g.rx, newX)
     #newobj = threaded_objective(g, newXY)
@@ -153,7 +155,7 @@ end
   while αy > params.min_stepsize #Linesearch to find the new step size
     stepsize = αy/l
     axpy!(-stepsize, gy, newY)
-    prox!(g.ry, newY, stepsize)
+    prox_sparse!(g.ry, newY, stepsize)
     reconstruct_obs!(g, newXY, Y=newY)#At_mul_B!(newXY, g.X, newY)
     newobj = sparse_loss_objective(g, newXY) + evaluate(g.ry, newY)
     #newobj = threaded_objective(g, newXY)
@@ -239,5 +241,9 @@ function fit_sparse!(g::GGLRM,
       break
     end
   end #For
-  ch
+  X, Y, ch
 end
+
+# default method for proxs that don't have specialized sparse methods
+prox_sparse!(g::Regularizer, Y::AbstractMatrix{Float64}, α::Number) = prox!(g, Y, α)
+prox_sparse(g::Regularizer, Y::AbstractMatrix{Float64}, α::Number) = prox(g, Y, α)

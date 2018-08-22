@@ -1,6 +1,7 @@
 #import LowRankModels: prox, prox!, evaluate
 #using LightGraphs
 #export MatrixRegularizer, GraphQuadReg, matrix, prox, prox!, evaluate
+import IterativeSolvers: cg, cg!
 
 abstract type AbstractGraphReg <: LowRankModels.Regularizer end
 
@@ -43,6 +44,39 @@ function prox!(g::GraphQuadReg, Y::AbstractMatrix{Float64}, α::Number)
   #Y*invQLpI
   transpose!(Y, A_ldiv_Bt(cholfact(QL, shift=1.), Y))
 end
+
+function prox_sparse(g::GraphQuadReg, Y::AbstractMatrix{Float64}, α::Number)
+  #Y*(2α*g.scale*g.QL + eye(g.QL))⁻¹
+  #g.QL is guaranteed to be sparse and symmetric positive definite
+  QL = Symmetric((2α*g.scale)*g.QL)
+  Yp = copy(Y)
+  for i=1:size(Y,1)
+    lsqr!(view(Yp,i,:), QL, view(Y,i,:), maxiter=10)
+  end
+  return Yp
+end
+
+function prox_sparse!(g::GraphQuadReg, Y::AbstractMatrix{Float64}, α::Number)
+  #Y*(2α*g.scale*g.QL + eye(g.QL))⁻¹
+  QL = Symmetric((2α*g.scale)*g.QL)
+  for i=1:size(Y,1)
+    lsqr!(view(Y,i,:), QL, view(Y,i,:), maxiter=10)
+  end
+  return Y
+end
+
+# function prox_sparse(g::GraphQuadReg, Y::AbstractMatrix{Float64}, α::Number)
+#   #Y*(2α*g.scale*g.QL + eye(g.QL))⁻¹
+#   #g.QL is guaranteed to be sparse and symmetric positive definite
+#   QL = Symmetric((2α*g.scale)*g.QL)
+#   Y / (QL + eye(QL))
+# end
+#
+# function prox_sparse!(g::GraphQuadReg, Y::AbstractMatrix{Float64}, α::Number)
+#   #Y*(2α*g.scale*g.QL + eye(g.QL))⁻¹
+#   QL = Symmetric((2α*g.scale)*g.QL)
+#   copy!(Y, Y / (QL + eye(QL))) # XXX can be more memory efficient
+# end
 
 function evaluate(g::GraphQuadReg, Y::AbstractMatrix{Float64})
   g.scale*sum((Y'*Y) .* g.QL)
