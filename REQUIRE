@@ -4,3 +4,4 @@ LightGraphs
 DataArrays
 DataFrames
 StatsBase
+IterativeSolvers

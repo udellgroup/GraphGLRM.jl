@@ -1,5 +1,3 @@
-import IterativeSolvers: lsqr, lsqr!
-
 function reconstruct_obs!(g::GGLRM, XY::Array{VecOrMat{Float64}}; X = g.X, Y = g.Y)
   yidxs = get_yidxs(g.losses)
   obsex = g.observed_examples
@@ -43,7 +41,7 @@ end
 #Calculates the whole objective of the GLRM
 function sparse_whole_objective(g::GGLRM, XY::Array{VecOrMat{Float64}};
                         X::Matrix{Float64}=g.X, Y::Matrix{Float64}=g.Y)
-  sparse_loss_objective(g, XY) + evaluate(g.rx, X) + evaluate(g.ry, Y)
+  sparse_loss_objective(g, XY) + evaluate_sparse(g.rx, X) + evaluate_sparse(g.ry, Y)
 end
 
 #Makes some performance optimizations
@@ -117,7 +115,7 @@ end
   #l = 1.5
   l = maximum(map(length, g.observed_features))+1#(mapreduce(length,+,g.observed_features) + 1)
 
-  obj = sparse_loss_objective(g,XY) + evaluate(g.rx, g.X)
+  obj = sparse_loss_objective(g,XY) + evaluate_sparse(g.rx, g.X)
   newobj = NaN
   while αx > params.min_stepsize #Linesearch to find the new step size
     stepsize = αx/l
@@ -125,7 +123,7 @@ end
     axpy!(-stepsize, gx, newX)
     prox_sparse!(g.rx, newX, stepsize)
     reconstruct_obs!(g, newXY, X=newX)#At_mul_B!(newXY, newX, g.Y)
-    newobj = sparse_loss_objective(g, newXY) + evaluate(g.rx, newX)
+    newobj = sparse_loss_objective(g, newXY) + evaluate_sparse(g.rx, newX)
     #newobj = threaded_objective(g, newXY)
     if newobj < obj
       copy!(g.X, newX)
@@ -150,14 +148,14 @@ end
   #l = 1.5
   l = maximum(map(length, g.observed_examples)) + 1#(mapreduce(length,+,g.observed_features) + 1)
   #obj = threaded_objective(g,XY)
-  obj = sparse_loss_objective(g, XY) + evaluate(g.ry, g.Y)
+  obj = sparse_loss_objective(g, XY) + evaluate_sparse(g.ry, g.Y)
   newobj = NaN
   while αy > params.min_stepsize #Linesearch to find the new step size
     stepsize = αy/l
     axpy!(-stepsize, gy, newY)
     prox_sparse!(g.ry, newY, stepsize)
     reconstruct_obs!(g, newXY, Y=newY)#At_mul_B!(newXY, g.X, newY)
-    newobj = sparse_loss_objective(g, newXY) + evaluate(g.ry, newY)
+    newobj = sparse_loss_objective(g, newXY) + evaluate_sparse(g.ry, newY)
     #newobj = threaded_objective(g, newXY)
     if newobj < obj
       copy!(g.Y, newY)
@@ -224,11 +222,11 @@ function fit_sparse!(g::GGLRM,
     end
     if t % 10 == 0
       if verbose
-        println("Iteration $t, objective value: $(objy + evaluate(rx, g.X))")
+        println("Iteration $t, objective value: $(objy + evaluate_sparse(rx, g.X))")
       end
     end
     #Update convergence history
-    obj = objy + evaluate(rx, g.X)
+    obj = objy + evaluate_sparse(rx, g.X)
     tm = time() - tm
     update_ch!(ch, tm, obj)
     tm = time()
@@ -244,6 +242,7 @@ function fit_sparse!(g::GGLRM,
   X, Y, ch
 end
 
-# default method for proxs that don't have specialized sparse methods
+# default methods for proxs that don't have specialized sparse methods
 prox_sparse!(g::Regularizer, Y::AbstractMatrix{Float64}, α::Number) = prox!(g, Y, α)
 prox_sparse(g::Regularizer, Y::AbstractMatrix{Float64}, α::Number) = prox(g, Y, α)
+evaluate_sparse(g::Regularizer, Y::AbstractMatrix{Float64}) = evaluate(g, Y)

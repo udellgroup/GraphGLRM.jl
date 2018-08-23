@@ -1,7 +1,7 @@
 #import LowRankModels: prox, prox!, evaluate
 #using LightGraphs
 #export MatrixRegularizer, GraphQuadReg, matrix, prox, prox!, evaluate
-import IterativeSolvers: cg, cg!
+import IterativeSolvers: lsqr!
 
 abstract type AbstractGraphReg <: LowRankModels.Regularizer end
 
@@ -51,7 +51,7 @@ function prox_sparse(g::GraphQuadReg, Y::AbstractMatrix{Float64}, α::Number)
   QL = Symmetric((2α*g.scale)*g.QL)
   Yp = copy(Y)
   for i=1:size(Y,1)
-    lsqr!(view(Yp,i,:), QL, view(Y,i,:), maxiter=10)
+    lsqr!(view(Yp,i,:), QL, view(Y,i,:), maxiter=2)
   end
   return Yp
 end
@@ -60,7 +60,7 @@ function prox_sparse!(g::GraphQuadReg, Y::AbstractMatrix{Float64}, α::Number)
   #Y*(2α*g.scale*g.QL + eye(g.QL))⁻¹
   QL = Symmetric((2α*g.scale)*g.QL)
   for i=1:size(Y,1)
-    lsqr!(view(Y,i,:), QL, view(Y,i,:), maxiter=10)
+    lsqr!(view(Y,i,:), QL, view(Y,i,:), maxiter=2)
   end
   return Y
 end
@@ -80,6 +80,15 @@ end
 
 function evaluate(g::GraphQuadReg, Y::AbstractMatrix{Float64})
   g.scale*sum((Y'*Y) .* g.QL)
+end
+
+function evaluate_sparse(g::GraphQuadReg, Y::AbstractMatrix{Float64})
+  rows, cols, vals = findnz(g.QL)
+  r = 0
+  for (i,j) in zip(rows, cols)
+    r += g.QL[i,j]*dot(Y[:,i], Y[:,j])
+  end
+  return r*g.scale
 end
 
 function embed(g::GraphQuadReg, yidxs::Array)
