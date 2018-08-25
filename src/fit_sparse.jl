@@ -239,7 +239,7 @@ function fit_sparse!(g::GGLRM,
       break
     end
   end #For
-  X, Y, ch
+  ch
 end
 
 # default methods for proxs that don't have specialized sparse methods

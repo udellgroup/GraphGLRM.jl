@@ -178,8 +178,8 @@ end
   αy, newobj
 end
 
-function LowRankModels.fit!(g::GGLRM;
-                      params::ProxGradParams=ProxGradParams(),
+function LowRankModels.fit!(g::GGLRM,
+                      params::ProxGradParams=ProxGradParams();
                       ch::ConvergenceHistory=ConvergenceHistory("ProxGradGLRM"),
                       verbose=true)
   X,Y = g.X, g.Y
