@@ -6,8 +6,8 @@ abstract type AbstractGraphReg <: LowRankModels.Regularizer end
 
 mutable struct GraphQuadReg <: AbstractGraphReg
   QL::AbstractMatrix{Float64}
-  scale::Float64
-  quadamt::Float64
+  scale::Number
+  quadamt::Number
   idxgraph::IndexGraph
 end
 
@@ -15,13 +15,13 @@ end
 matrix(g::GraphQuadReg) = g.QL
 
 ## Pass in a graph and a quadratic regularization amount
-function GraphQuadReg(g::LightGraphs.Graph, scale::Float64=1., quadamt::Float64=1.)
+function GraphQuadReg(g::LightGraphs.Graph, scale::Number=1., quadamt::Number=1.)
   L = laplacian_matrix(g)
   QL = L + quadamt*I
   GraphQuadReg(QL, scale, quadamt, IndexGraph(g))
 end
 
-function GraphQuadReg(IG::IndexGraph, scale::Float64=1., quadamt::Float64=1.)
+function GraphQuadReg(IG::IndexGraph, scale::Number=1., quadamt::Number=1.)
   QL = laplacian_matrix(IG.graph) + quadamt*I
   GraphQuadReg(QL, scale, quadamt, IG)
 end
